@@ -69,6 +69,7 @@ export function LeadsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "import">("create");
@@ -240,6 +241,7 @@ export function LeadsPage() {
         partner_id: isMaster ? undefined : effectivePartnerId
       });
       setImportPreview(preview);
+      setPreviewModalOpen(true);
     } catch (err) {
       if (err instanceof ApiError) {
         setImportError(err.message);
@@ -263,6 +265,7 @@ export function LeadsPage() {
       );
       setImportPreview(null);
       setImportFile(null);
+      setPreviewModalOpen(false);
       setCreateModalOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -273,6 +276,13 @@ export function LeadsPage() {
     } finally {
       setConfirmLoading(false);
     }
+  }
+
+  function handleCloseCreateModal() {
+    setCreateModalOpen(false);
+    setPreviewModalOpen(false);
+    setImportPreview(null);
+    setImportError(null);
   }
 
   return (
@@ -344,7 +354,7 @@ export function LeadsPage() {
               <h2>{modalMode === "create" ? "Adicionar lead" : "Importar planilha"}</h2>
               <button
                 className="button-secondary header-logout-btn"
-                onClick={() => setCreateModalOpen(false)}
+                onClick={handleCloseCreateModal}
               >
                 <i className="bi bi-arrow-left" aria-hidden="true" /> Voltar
               </button>
@@ -445,34 +455,70 @@ export function LeadsPage() {
                     {previewLoading ? "Processando..." : "Gerar preview"}
                   </button>
                 </form>
-
-                {importPreview ? (
-                  <div className="import-preview">
-                    <p>
-                      Total: {importPreview.total_rows} | Válidas: {importPreview.valid_rows} | Inválidas:{" "}
-                      {importPreview.invalid_rows}
-                    </p>
-                    {importPreview.errors_sample.length > 0 ? (
-                      <div className="timeline">
-                        {importPreview.errors_sample.map((item) => (
-                          <article className="timeline-item" key={`${item.row_number}-${item.error}`}>
-                            <p>Linha {item.row_number}</p>
-                            <p>{item.error}</p>
-                          </article>
-                        ))}
-                      </div>
-                    ) : null}
-                    <button
-                      className="button-whatsapp header-logout-btn"
-                      onClick={() => void handleConfirmImport()}
-                      disabled={confirmLoading}
-                    >
-                      {confirmLoading ? "Confirmando..." : "Confirmar importação"}
-                    </button>
-                  </div>
-                ) : null}
               </>
             ) : null}
+          </section>
+        </div>
+      ) : null}
+
+      {previewModalOpen && importPreview ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <section className="modal-card preview-table-modal">
+            <div className="modal-header">
+              <h2>Preview da importação</h2>
+              <button className="button-secondary header-logout-btn" onClick={() => setPreviewModalOpen(false)}>
+                <i className="bi bi-arrow-left" aria-hidden="true" /> Voltar
+              </button>
+            </div>
+
+            <p>
+              Total: {importPreview.total_rows} | Válidas: {importPreview.valid_rows} | Inválidas:{" "}
+              {importPreview.invalid_rows}
+            </p>
+
+            <div className="preview-table-wrap">
+              <table className="preview-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Telefone</th>
+                    <th>Escola</th>
+                    <th>Cidade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreview.preview_sample.map((row, index) => (
+                    <tr key={`${row.email}-${index}`}>
+                      <td>{row.student_name}</td>
+                      <td>{row.email}</td>
+                      <td>{row.phone}</td>
+                      <td>{row.school}</td>
+                      <td>{row.city}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {importPreview.errors_sample.length > 0 ? (
+              <div className="timeline">
+                {importPreview.errors_sample.map((item) => (
+                  <article className="timeline-item" key={`${item.row_number}-${item.error}`}>
+                    <p>Linha {item.row_number}</p>
+                    <p>{item.error}</p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            <button
+              className="button-whatsapp header-logout-btn"
+              onClick={() => void handleConfirmImport()}
+              disabled={confirmLoading}
+            >
+              {confirmLoading ? "Confirmando..." : "Confirmar e adicionar leads"}
+            </button>
           </section>
         </div>
       ) : null}
