@@ -160,6 +160,12 @@ button {
   gap: 8px;
 }
 
+.button-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+}
+
 .button-primary:disabled,
 button:disabled {
   opacity: 0.6;
@@ -226,6 +232,12 @@ button:disabled {
 
 .lead-detail-card {
   position: relative;
+}
+
+.detail-header-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .lead-main {

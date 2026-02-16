@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, api } from "../lib/api";
 import { openWhatsApp } from "../lib/whatsapp";
@@ -62,12 +62,23 @@ function formatDate(iso: string) {
 
 export function LeadDetailPage() {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const { id = "" } = useParams();
   const [lead, setLead] = useState<Lead | null>(null);
   const [statusHistory, setStatusHistory] = useState<LeadStatusHistoryItem[]>([]);
   const [contactEvents, setContactEvents] = useState<ContactEventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [editData, setEditData] = useState({
+    student_name: "",
+    email: "",
+    phone_country: "BR",
+    phone_national: "",
+    school: "",
+    city: ""
+  });
   const isMaster = session?.user.role === "MASTER";
 
   async function loadLeadDetail() {
@@ -77,6 +88,14 @@ export function LeadDetailPage() {
     try {
       const [leadResponse, historyResponse] = await Promise.all([api.getLeadById(id), api.getLeadHistory(id)]);
       setLead(leadResponse);
+      setEditData({
+        student_name: leadResponse.studentName,
+        email: leadResponse.email,
+        phone_country: leadResponse.phoneCountry,
+        phone_national: leadResponse.phoneRaw,
+        school: leadResponse.school,
+        city: leadResponse.city
+      });
       setStatusHistory(historyResponse.status_history);
       setContactEvents(historyResponse.contact_events);
     } catch (err) {
@@ -126,6 +145,42 @@ export function LeadDetailPage() {
     }
   }
 
+  async function handleSaveLead() {
+    if (!id) return;
+    setSaving(true);
+    try {
+      await api.updateLead(id, editData);
+      await loadLeadDetail();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+      } else {
+        alert("Erro ao salvar lead");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteLead() {
+    if (!id || !isMaster) return;
+    const confirmed = window.confirm("Deseja realmente excluir este lead?");
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await api.deleteLead(id);
+      navigate("/leads");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+      } else {
+        alert("Erro ao excluir lead");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading && !lead) {
     return (
       <main className="page-shell">
@@ -162,20 +217,73 @@ export function LeadDetailPage() {
         <Link to="/leads" className="button-secondary action-btn header-logout-btn">
           <i className="bi bi-arrow-left" aria-hidden="true" /> Voltar
         </Link>
-        {isMaster ? (
-          <button className="button-whatsapp header-logout-btn" onClick={() => void handleSendWhatsApp()}>
-            <i className="bi bi-whatsapp" aria-hidden="true" /> WhatsApp
-          </button>
-        ) : null}
+        <div className="detail-header-actions">
+          {isMaster ? (
+            <button className="button-danger header-logout-btn" onClick={() => void handleDeleteLead()} disabled={deleting}>
+              {deleting ? "Excluindo..." : "Excluir"}
+            </button>
+          ) : null}
+          {isMaster ? (
+            <button className="button-whatsapp header-logout-btn" onClick={() => void handleSendWhatsApp()}>
+              <i className="bi bi-whatsapp" aria-hidden="true" /> WhatsApp
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <section className="card lead-detail-card">
-        <h1>{lead.studentName}</h1>
-        <p>{lead.email}</p>
-        <p>{lead.phoneE164}</p>
-        <p>
-          {lead.school} • {lead.city}
-        </p>
+        <h1>Editar lead</h1>
+        <label>
+          Nome do estudante
+          <input
+            value={editData.student_name}
+            onChange={(e) => setEditData((prev) => ({ ...prev, student_name: e.target.value }))}
+          />
+        </label>
+        <label>
+          Email
+          <input
+            type="email"
+            value={editData.email}
+            onChange={(e) => setEditData((prev) => ({ ...prev, email: e.target.value }))}
+          />
+        </label>
+        <div className="form-grid-two">
+          <label>
+            País (ISO2)
+            <input
+              value={editData.phone_country}
+              maxLength={2}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  phone_country: e.target.value.toUpperCase()
+                }))
+              }
+            />
+          </label>
+          <label>
+            Telefone nacional
+            <input
+              value={editData.phone_national}
+              onChange={(e) => setEditData((prev) => ({ ...prev, phone_national: e.target.value }))}
+            />
+          </label>
+        </div>
+        <label>
+          Escola
+          <input
+            value={editData.school}
+            onChange={(e) => setEditData((prev) => ({ ...prev, school: e.target.value }))}
+          />
+        </label>
+        <label>
+          Cidade
+          <input
+            value={editData.city}
+            onChange={(e) => setEditData((prev) => ({ ...prev, city: e.target.value }))}
+          />
+        </label>
         <span
           className={`${statusBadgeClass(lead.status)} status-badge-corner`}
           title={statusLabel(lead.status)}
@@ -197,6 +305,9 @@ export function LeadDetailPage() {
             <input value={statusLabel(lead.status)} readOnly />
           )}
         </label>
+        <button className="button-primary" onClick={() => void handleSaveLead()} disabled={saving}>
+          {saving ? "Salvando..." : "Salvar alterações"}
+        </button>
       </section>
 
       <section className="card">

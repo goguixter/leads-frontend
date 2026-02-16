@@ -179,8 +179,21 @@ export const api = {
     return request<LeadHistoryResponse>(`/leads/${id}/history`, { method: "GET" });
   },
 
-  updateLead(id: string, payload: { status?: LeadStatus }) {
+  updateLead(id: string, payload: {
+    student_name?: string;
+    email?: string;
+    phone_country?: string;
+    phone_national?: string;
+    school?: string;
+    city?: string;
+    status?: LeadStatus;
+    note?: string;
+  }) {
     return request<Lead>(`/leads/${id}`, { method: "PATCH", body: payload });
+  },
+
+  deleteLead(id: string) {
+    return request<void>(`/leads/${id}`, { method: "DELETE" });
   },
 
   generateMessage(id: string) {
