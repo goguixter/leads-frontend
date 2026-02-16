@@ -66,6 +66,7 @@ export function LeadsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [canScrollPage, setCanScrollPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -187,6 +188,29 @@ export function LeadsPage() {
       document.body.style.overflow = currentOverflow;
     };
   }, [createModalOpen]);
+
+  useEffect(() => {
+    function updateCanScrollPage() {
+      const root = document.documentElement;
+      setCanScrollPage(root.scrollHeight > root.clientHeight);
+    }
+
+    updateCanScrollPage();
+    window.addEventListener("resize", updateCanScrollPage);
+    return () => {
+      window.removeEventListener("resize", updateCanScrollPage);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const root = document.documentElement;
+      setCanScrollPage(root.scrollHeight > root.clientHeight);
+    }, 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [items.length, loading, loadingMore, createModalOpen, previewModalOpen, error]);
 
   async function loadCurrentPartner() {
     try {
@@ -748,11 +772,13 @@ export function LeadsPage() {
         </section>
       ) : null}
 
-      <section className="card">
-        <button className="button-secondary" onClick={handleBackToTop}>
-          <i className="bi bi-arrow-up" aria-hidden="true" /> Voltar ao topo
-        </button>
-      </section>
+      {canScrollPage ? (
+        <section className="card">
+          <button className="button-secondary" onClick={handleBackToTop}>
+            <i className="bi bi-arrow-up" aria-hidden="true" /> Voltar ao topo
+          </button>
+        </section>
+      ) : null}
     </main>
   );
 }
