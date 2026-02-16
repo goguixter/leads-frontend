@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, api } from "../lib/api";
@@ -13,6 +13,48 @@ const STATUS_OPTIONS: LeadStatus[] = [
   "WON",
   "LOST"
 ];
+
+function statusLabel(status: LeadStatus) {
+  switch (status) {
+    case "FIRST_CONTACT":
+      return "Primeiro contato";
+    case "NO_RESPONSE":
+      return "Sem resposta";
+    case "NEW":
+      return "Novo";
+    case "RESPONDED":
+      return "Respondeu";
+    case "WON":
+      return "Ganho";
+    case "LOST":
+      return "Perdido";
+    default:
+      return status;
+  }
+}
+
+function statusBadgeClass(status: LeadStatus) {
+  return `status-badge status-${status.toLowerCase()}`;
+}
+
+function statusIconClass(status: LeadStatus) {
+  switch (status) {
+    case "NEW":
+      return "bi bi-person-plus-fill";
+    case "FIRST_CONTACT":
+      return "bi bi-chat-dots-fill";
+    case "RESPONDED":
+      return "bi bi-reply-fill";
+    case "NO_RESPONSE":
+      return "bi bi-telephone-x-fill";
+    case "WON":
+      return "bi bi-trophy-fill";
+    case "LOST":
+      return "bi bi-x-circle-fill";
+    default:
+      return "bi bi-tag-fill";
+  }
+}
 
 export function LeadsPage() {
   const { session, logout } = useAuth();
@@ -29,6 +71,8 @@ export function LeadsPage() {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "import">("create");
   const [selectedPartnerId, setSelectedPartnerId] = useState("");
   const [currentPartnerName, setCurrentPartnerName] = useState("");
   const [formData, setFormData] = useState({
@@ -39,20 +83,17 @@ export function LeadsPage() {
     school: "",
     city: ""
   });
+  const autoSearchStarted = useRef(false);
 
   const isMaster = session?.user.role === "MASTER";
   const effectivePartnerId = isMaster ? selectedPartnerId : (session?.user.partnerId ?? "");
-  const selectedPartnerName = useMemo(
-    () => partners.find((partner) => partner.id === selectedPartnerId)?.name ?? "",
-    [partners, selectedPartnerId]
-  );
   const userInfo = useMemo(() => {
     if (!session) return "";
     if (isMaster) {
-      return selectedPartnerName ? `MASTER • ${selectedPartnerName}` : "MASTER";
+      return "MASTER";
     }
     return currentPartnerName ? `PARTNER • ${currentPartnerName}` : "PARTNER";
-  }, [currentPartnerName, isMaster, selectedPartnerName, session]);
+  }, [currentPartnerName, isMaster, session]);
 
   async function loadLeads() {
     setLoading(true);
@@ -85,6 +126,31 @@ export function LeadsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!autoSearchStarted.current) {
+      autoSearchStarted.current = true;
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadLeads();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status]);
+
+  useEffect(() => {
+    if (!createModalOpen) return;
+    const currentOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = currentOverflow;
+    };
+  }, [createModalOpen]);
 
   async function loadPartners() {
     try {
@@ -161,6 +227,7 @@ export function LeadsPage() {
         school: "",
         city: ""
       });
+      setCreateModalOpen(false);
       await loadLeads();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -216,6 +283,7 @@ export function LeadsPage() {
       );
       setImportPreview(null);
       setImportFile(null);
+      setCreateModalOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
         setImportError(err.message);
@@ -234,191 +302,249 @@ export function LeadsPage() {
           <h1>Leads</h1>
           <p>{userInfo}</p>
         </div>
-        <button className="button-secondary" onClick={() => void logout()}>
+        <button className="button-secondary header-logout-btn" onClick={() => void logout()}>
           <i className="bi bi-box-arrow-right" aria-hidden="true" /> Sair
         </button>
       </header>
 
-      <section className="card form-row">
-        <input
-          type="search"
-          placeholder="Buscar por nome, email ou telefone"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus | "")}>
-          <option value="">Todos os status</option>
-          {STATUS_OPTIONS.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <button className="button-primary" onClick={() => void loadLeads()} disabled={loading}>
-          {loading ? "Carregando..." : "Buscar"}
-        </button>
+      <section className="card">
+        <div className="search-row">
+          <input
+            type="search"
+            placeholder="Buscar por nome, email ou telefone"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus | "")}>
+            <option value="">Todos os status</option>
+            {STATUS_OPTIONS.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <button className="button-primary" onClick={() => void loadLeads()} disabled={loading}>
+            {loading ? (
+              "Carregando..."
+            ) : (
+              <>
+                <i className="bi bi-search" aria-hidden="true" /> Buscar
+              </>
+            )}
+          </button>
+        </div>
+        <div className="action-row">
+          <button
+            className="button-secondary"
+            onClick={() => {
+              setModalMode("create");
+              setCreateModalOpen(true);
+            }}
+          >
+            <i className="bi bi-person-plus" aria-hidden="true" /> Novo lead
+          </button>
+          <button
+            className="button-secondary"
+            onClick={() => {
+              setModalMode("import");
+              setCreateModalOpen(true);
+            }}
+          >
+            <i className="bi bi-upload" aria-hidden="true" /> Importar planilha
+          </button>
+        </div>
       </section>
 
       {error ? <p className="error-message">{error}</p> : null}
 
-      <section className="card">
-        <h2>Criar lead manualmente</h2>
-        <form className="form-stack" onSubmit={handleCreateLead}>
-          {isMaster ? (
-            <label>
-              Partner
-              <select
-                value={selectedPartnerId}
-                onChange={(e) => setSelectedPartnerId(e.target.value)}
-                required
+      {createModalOpen ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <section className="modal-card">
+            <div className="modal-header">
+              <h2>{modalMode === "create" ? "Adicionar lead" : "Importar planilha"}</h2>
+              <button
+                className="button-secondary header-logout-btn"
+                onClick={() => setCreateModalOpen(false)}
               >
-                <option value="">Selecione o partner</option>
-                {partners.map((partner) => (
-                  <option key={partner.id} value={partner.id}>
-                    {partner.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+                <i className="bi bi-arrow-left" aria-hidden="true" /> Voltar
+              </button>
+            </div>
 
-          <label>
-            Nome do estudante
-            <input
-              value={formData.student_name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, student_name: e.target.value }))}
-              required
-            />
-          </label>
+            {modalMode === "create" ? (
+              <form className="form-stack" onSubmit={handleCreateLead}>
+                {isMaster ? (
+                  <label>
+                    Partner
+                    <select
+                      value={selectedPartnerId}
+                      onChange={(e) => setSelectedPartnerId(e.target.value)}
+                      required
+                    >
+                      <option value="">Selecione o partner</option>
+                      {partners.map((partner) => (
+                        <option key={partner.id} value={partner.id}>
+                          {partner.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
 
-          <label>
-            Email
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-              required
-            />
-          </label>
+                <label>
+                  Nome do estudante
+                  <input
+                    value={formData.student_name}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, student_name: e.target.value }))}
+                    required
+                  />
+                </label>
 
-          <div className="form-grid-two">
-            <label>
-              País (ISO2)
-              <input
-                value={formData.phone_country}
-                maxLength={2}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    phone_country: e.target.value.toUpperCase()
-                  }))
-                }
-                required
-              />
-            </label>
-            <label>
-              Telefone nacional
-              <input
-                value={formData.phone_national}
-                onChange={(e) => setFormData((prev) => ({ ...prev, phone_national: e.target.value }))}
-                required
-              />
-            </label>
-          </div>
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    required
+                  />
+                </label>
 
-          <label>
-            Escola
-            <input
-              value={formData.school}
-              onChange={(e) => setFormData((prev) => ({ ...prev, school: e.target.value }))}
-              required
-            />
-          </label>
+                <div className="form-grid-two">
+                  <label>
+                    País (ISO2)
+                    <input
+                      value={formData.phone_country}
+                      maxLength={2}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          phone_country: e.target.value.toUpperCase()
+                        }))
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    Telefone nacional
+                    <input
+                      value={formData.phone_national}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, phone_national: e.target.value }))}
+                      required
+                    />
+                  </label>
+                </div>
 
-          <label>
-            Cidade
-            <input
-              value={formData.city}
-              onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
-              required
-            />
-          </label>
+                <label>
+                  Escola
+                  <input
+                    value={formData.school}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, school: e.target.value }))}
+                    required
+                  />
+                </label>
 
-          {formError ? <p className="error-message">{formError}</p> : null}
-          <button type="submit" className="button-primary" disabled={createLoading}>
-            {createLoading ? "Criando..." : "Criar lead"}
-          </button>
-        </form>
-      </section>
+                <label>
+                  Cidade
+                  <input
+                    value={formData.city}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+                    required
+                  />
+                </label>
 
-      <section className="card">
-        <h2>Importar planilha (.xls/.xlsx)</h2>
-        <p className="helper-text">
-          Colunas obrigatórias: student_name, email, phone (E.164 com +), school, city.
-        </p>
-        <form className="form-stack" onSubmit={handleImportPreview}>
-          {isMaster ? (
-            <label>
-              Partner para importação
-              <select
-                value={selectedPartnerId}
-                onChange={(e) => setSelectedPartnerId(e.target.value)}
-                required
-              >
-                <option value="">Selecione o partner</option>
-                {partners.map((partner) => (
-                  <option key={partner.id} value={partner.id}>
-                    {partner.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-
-          <label>
-            Arquivo
-            <input
-              type="file"
-              accept=".xls,.xlsx"
-              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              required
-            />
-          </label>
-
-          {importError ? <p className="error-message">{importError}</p> : null}
-          <button type="submit" className="button-primary" disabled={previewLoading}>
-            {previewLoading ? "Processando..." : "Gerar preview"}
-          </button>
-        </form>
-
-        {importPreview ? (
-          <div className="import-preview">
-            <p>
-              Total: {importPreview.total_rows} | Válidas: {importPreview.valid_rows} | Inválidas:{" "}
-              {importPreview.invalid_rows}
-            </p>
-            {importPreview.errors_sample.length > 0 ? (
-              <div className="timeline">
-                {importPreview.errors_sample.map((item) => (
-                  <article className="timeline-item" key={`${item.row_number}-${item.error}`}>
-                    <p>Linha {item.row_number}</p>
-                    <p>{item.error}</p>
-                  </article>
-                ))}
-              </div>
+                {formError ? <p className="error-message">{formError}</p> : null}
+                <button type="submit" className="button-primary" disabled={createLoading}>
+                  {createLoading ? (
+                    "Criando..."
+                  ) : (
+                    <>
+                      <i className="bi bi-person-plus" aria-hidden="true" /> Adicionar lead
+                    </>
+                  )}
+                </button>
+              </form>
             ) : null}
-            <button className="button-whatsapp" onClick={() => void handleConfirmImport()} disabled={confirmLoading}>
-              {confirmLoading ? "Confirmando..." : "Confirmar importação"}
-            </button>
-          </div>
-        ) : null}
-      </section>
+
+            {modalMode === "import" ? (
+              <>
+                <form className="form-stack" onSubmit={handleImportPreview}>
+                  {isMaster ? (
+                    <label>
+                      Partner para importação
+                      <select
+                        value={selectedPartnerId}
+                        onChange={(e) => setSelectedPartnerId(e.target.value)}
+                        required
+                      >
+                        <option value="">Selecione o partner</option>
+                        {partners.map((partner) => (
+                          <option key={partner.id} value={partner.id}>
+                            {partner.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  <label>
+                    Arquivo
+                    <input
+                      type="file"
+                      accept=".xls,.xlsx"
+                      onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                      required
+                    />
+                  </label>
+
+                  {importError ? <p className="error-message">{importError}</p> : null}
+                  <button type="submit" className="button-primary" disabled={previewLoading}>
+                    {previewLoading ? "Processando..." : "Gerar preview"}
+                  </button>
+                </form>
+
+                {importPreview ? (
+                  <div className="import-preview">
+                    <p>
+                      Total: {importPreview.total_rows} | Válidas: {importPreview.valid_rows} | Inválidas:{" "}
+                      {importPreview.invalid_rows}
+                    </p>
+                    {importPreview.errors_sample.length > 0 ? (
+                      <div className="timeline">
+                        {importPreview.errors_sample.map((item) => (
+                          <article className="timeline-item" key={`${item.row_number}-${item.error}`}>
+                            <p>Linha {item.row_number}</p>
+                            <p>{item.error}</p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
+                    <button
+                      className="button-whatsapp header-logout-btn"
+                      onClick={() => void handleConfirmImport()}
+                      disabled={confirmLoading}
+                    >
+                      {confirmLoading ? "Confirmando..." : "Confirmar importação"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
 
       <section className="list-stack">
         {items.map((lead) => (
           <article className="lead-card" key={lead.id}>
             <div className="lead-main">
               <h2>{lead.studentName}</h2>
+              <span
+                className={`${statusBadgeClass(lead.status)} status-badge-corner`}
+                title={statusLabel(lead.status)}
+                aria-label={statusLabel(lead.status)}
+              >
+                <i className={statusIconClass(lead.status)} aria-hidden="true" />
+              </span>
               <p>{lead.email}</p>
               <p>{lead.phoneE164}</p>
               <p>
@@ -426,22 +552,28 @@ export function LeadsPage() {
               </p>
             </div>
             <div className="lead-actions">
-              <button className="button-whatsapp" onClick={() => void handleSendWhatsApp(lead.id)}>
-                WhatsApp
-              </button>
-              <Link className="button-secondary" to={`/leads/${lead.id}`}>
-                Detalhes
-              </Link>
-              <select
-                value={lead.status}
-                onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
-              >
-                {STATUS_OPTIONS.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
+              <div className={`lead-action-row${isMaster ? "" : " single-action"}`}>
+                {isMaster ? (
+                  <button className="button-whatsapp" onClick={() => void handleSendWhatsApp(lead.id)}>
+                    <i className="bi bi-whatsapp" aria-hidden="true" /> WhatsApp
+                  </button>
+                ) : null}
+                <Link className="button-secondary action-btn" to={`/leads/${lead.id}`}>
+                  <i className="bi bi-person-lines-fill" aria-hidden="true" /> Detalhes
+                </Link>
+              </div>
+              {isMaster ? (
+                <select
+                  value={lead.status}
+                  onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                >
+                  {STATUS_OPTIONS.map((item) => (
+                    <option key={item} value={item}>
+                      {statusLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
             </div>
           </article>
         ))}
