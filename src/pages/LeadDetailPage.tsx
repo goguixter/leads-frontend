@@ -17,17 +17,17 @@ const STATUS_OPTIONS: LeadStatus[] = [
 function statusLabel(status: LeadStatus) {
   switch (status) {
     case "FIRST_CONTACT":
-      return "Primeiro contato";
+      return "Primeiro contato efetuado";
     case "NO_RESPONSE":
       return "Sem resposta";
     case "NEW":
-      return "Novo";
+      return "Novo Lead";
     case "RESPONDED":
-      return "Respondeu";
+      return "Primeiro contato respondido";
     case "WON":
-      return "Ganho";
+      return "Lead fechado";
     case "LOST":
-      return "Perdido";
+      return "Ja comprou ou nao retornou";
     default:
       return status;
   }
