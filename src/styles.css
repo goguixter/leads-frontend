@@ -372,6 +372,20 @@ button:disabled {
   right: 15px;
 }
 
+.lead-detail-card .status-badge {
+  width: 58px;
+  height: 40px;
+  font-size: 20px;
+}
+
+.lead-detail-card .status-badge-corner {
+  position: relative;
+  top: 0;
+  right: 0;
+  opacity: 1;
+  justify-self: end;
+}
+
 .status-new {
   color: #1d4ed8;
 }

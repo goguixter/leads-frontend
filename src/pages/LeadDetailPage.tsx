@@ -33,29 +33,6 @@ function statusLabel(status: LeadStatus) {
   }
 }
 
-function statusBadgeClass(status: LeadStatus) {
-  return `status-badge status-${status.toLowerCase()}`;
-}
-
-function statusIconClass(status: LeadStatus) {
-  switch (status) {
-    case "NEW":
-      return "bi bi-person-plus-fill";
-    case "FIRST_CONTACT":
-      return "bi bi-chat-dots-fill";
-    case "RESPONDED":
-      return "bi bi-reply-fill";
-    case "NO_RESPONSE":
-      return "bi bi-telephone-x-fill";
-    case "WON":
-      return "bi bi-airplane-fill";
-    case "LOST":
-      return "bi bi-x-circle-fill";
-    default:
-      return "bi bi-tag-fill";
-  }
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("pt-BR");
 }
@@ -298,13 +275,6 @@ export function LeadDetailPage() {
             onChange={(e) => setEditData((prev) => ({ ...prev, city: e.target.value }))}
           />
         </label>
-        <span
-          className={`${statusBadgeClass(lead.status)} status-badge-corner`}
-          title={statusLabel(lead.status)}
-          aria-label={statusLabel(lead.status)}
-        >
-          <i className={statusIconClass(lead.status)} aria-hidden="true" />
-        </span>
         <label>
           Status
           {isMaster ? (
