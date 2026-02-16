@@ -61,6 +61,7 @@ export function LeadsPage() {
   const [items, setItems] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<LeadStatus | "">("");
+  const [totalFilteredLeads, setTotalFilteredLeads] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -105,6 +106,7 @@ export function LeadsPage() {
         page_size: 30
       });
       setItems(response.items);
+      setTotalFilteredLeads(response.pagination.total);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -340,9 +342,12 @@ export function LeadsPage() {
               setCreateModalOpen(true);
             }}
           >
-            <i className="bi bi-upload" aria-hidden="true" /> Importar planilha
+            <i className="bi bi-upload" aria-hidden="true" />
+            <span className="show-mobile-only">Importar</span>
+            <span className="hide-mobile-only">Importar planilha</span>
           </button>
         </div>
+        <p className="results-info">Mostrando {totalFilteredLeads} leads</p>
       </section>
 
       {error ? <p className="error-message">{error}</p> : null}
