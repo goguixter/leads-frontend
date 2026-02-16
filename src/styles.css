@@ -193,6 +193,22 @@ button:disabled {
   font-size: 12px;
 }
 
+.checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.checkbox-line input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  border-radius: 4px;
+  padding: 0;
+}
+
 .list-stack {
   display: grid;
   gap: 10px;

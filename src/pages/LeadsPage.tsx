@@ -72,6 +72,8 @@ export function LeadsPage() {
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [ignoreDuplicateOnCreate, setIgnoreDuplicateOnCreate] = useState(false);
+  const [ignoreDuplicateOnImport, setIgnoreDuplicateOnImport] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "import">("create");
   const [currentPartnerName, setCurrentPartnerName] = useState("");
@@ -200,6 +202,7 @@ export function LeadsPage() {
     try {
       await api.createLead({
         partner_id: isMaster ? undefined : effectivePartnerId,
+        ignore_duplicates: ignoreDuplicateOnCreate,
         ...formData
       });
       setFormData({
@@ -260,7 +263,9 @@ export function LeadsPage() {
     setConfirmLoading(true);
     setImportError(null);
     try {
-      const result = await api.confirmImport(importPreview.import_id);
+      const result = await api.confirmImport(importPreview.import_id, {
+        ignore_duplicates: ignoreDuplicateOnImport
+      });
       await loadLeads();
       alert(
         `Importacao ${result.status}: ${result.success_rows} sucesso(s), ${result.error_rows} erro(s).`
@@ -285,6 +290,8 @@ export function LeadsPage() {
     setPreviewModalOpen(false);
     setImportPreview(null);
     setImportError(null);
+    setIgnoreDuplicateOnCreate(false);
+    setIgnoreDuplicateOnImport(true);
   }
 
   return (
@@ -429,6 +436,15 @@ export function LeadsPage() {
                   />
                 </label>
 
+                <label className="checkbox-line">
+                  <input
+                    type="checkbox"
+                    checked={ignoreDuplicateOnCreate}
+                    onChange={(e) => setIgnoreDuplicateOnCreate(e.target.checked)}
+                  />
+                  Ignorar duplicidade e adicionar mesmo assim
+                </label>
+
                 {formError ? <p className="error-message">{formError}</p> : null}
                 <button type="submit" className="button-primary" disabled={createLoading}>
                   {createLoading ? (
@@ -515,6 +531,17 @@ export function LeadsPage() {
                   </article>
                 ))}
               </div>
+            ) : null}
+
+            {importPreview.duplicate_rows > 0 ? (
+              <label className="checkbox-line">
+                <input
+                  type="checkbox"
+                  checked={ignoreDuplicateOnImport}
+                  onChange={(e) => setIgnoreDuplicateOnImport(e.target.checked)}
+                />
+                Ignorar {importPreview.duplicate_rows} leads duplicados e adicionar apenas novos
+              </label>
             ) : null}
 
             <button

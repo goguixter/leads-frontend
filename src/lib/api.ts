@@ -160,6 +160,7 @@ export const api = {
 
   createLead(payload: {
     partner_id?: string;
+    ignore_duplicates?: boolean;
     student_name: string;
     email: string;
     phone_country: string;
@@ -198,8 +199,11 @@ export const api = {
     });
   },
 
-  confirmImport(importId: string) {
-    return request<ImportConfirmResponse>(`/imports/${importId}/confirm`, { method: "POST" });
+  confirmImport(importId: string, payload?: { ignore_duplicates?: boolean }) {
+    return request<ImportConfirmResponse>(`/imports/${importId}/confirm`, {
+      method: "POST",
+      body: payload ?? { ignore_duplicates: true }
+    });
   }
 };
 

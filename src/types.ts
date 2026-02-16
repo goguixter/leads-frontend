@@ -118,6 +118,7 @@ export type ImportPreviewResponse = {
   total_rows: number;
   valid_rows: number;
   invalid_rows: number;
+  duplicate_rows: number;
   preview_sample: Array<{
     student_name: string;
     email: string;
