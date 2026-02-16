@@ -151,19 +151,29 @@ button {
 }
 
 .button-whatsapp {
-  background: #16a34a;
-  color: #f8fafc;
-  border: none;
+  background: #ffffff;
+  color: #16a34a;
+  border: 1px solid #16a34a;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  transition: background-color 0.2s ease;
 }
 
 .button-danger {
-  background: #dc2626;
-  color: #fff;
-  border: none;
+  background: #ffffff;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  transition: background-color 0.2s ease;
+}
+
+.button-whatsapp:hover:not(:disabled) {
+  background: rgba(22, 163, 74, 0.08);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .button-primary:disabled,
@@ -224,10 +234,34 @@ button:disabled {
   background: #ffffff;
   border-radius: 14px;
   padding: 12px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12), 0 3px 10px rgba(15, 23, 42, 0.08);
   display: grid;
   gap: 12px;
   position: relative;
+}
+
+.lead-card-status-new {
+  background: #eaf3ff;
+}
+
+.lead-card-status-first_contact {
+  background: #e6f7ff;
+}
+
+.lead-card-status-responded {
+  background: #eafbea;
+}
+
+.lead-card-status-no_response {
+  background: #fff7dd;
+}
+
+.lead-card-status-won {
+  background: #ddf8ef;
+}
+
+.lead-card-status-lost {
+  background: #ffe9e9;
 }
 
 .lead-detail-card {
@@ -332,11 +366,19 @@ button:disabled {
 
 .lead-action-row .button-secondary.icon-action-btn,
 .status-picker > summary.icon-action-btn {
-  border: 1px solid #94a3b8;
+  border: 1px solid #2563eb;
+  color: #2563eb;
+  background: #ffffff;
   min-height: 44px;
   max-height: 44px;
   padding: 0;
   width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.lead-action-row .button-secondary.icon-action-btn:hover:not(:disabled),
+.status-picker > summary.icon-action-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .status-picker summary::-webkit-details-marker {

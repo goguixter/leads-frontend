@@ -542,7 +542,13 @@ export function LeadsPage() {
 
                   {importError ? <p className="error-message">{importError}</p> : null}
                   <button type="submit" className="button-primary" disabled={previewLoading}>
-                    {previewLoading ? "Processando..." : "Gerar preview"}
+                    {previewLoading ? (
+                      "Processando..."
+                    ) : (
+                      <>
+                        <i className="bi bi-file-earmark-text" aria-hidden="true" /> Gerar preview
+                      </>
+                    )}
                   </button>
                 </form>
               </>
@@ -651,7 +657,7 @@ export function LeadsPage() {
 
       <section className="list-stack">
         {items.map((lead) => (
-          <article className="lead-card" key={lead.id}>
+          <article className={`lead-card lead-card-status-${lead.status.toLowerCase()}`} key={lead.id}>
             <div className="lead-main">
               <h2>{lead.studentName}</h2>
               <span
