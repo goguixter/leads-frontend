@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, api } from "../lib/api";
 import { openWhatsApp } from "../lib/whatsapp";
-import type { ImportPreviewResponse, Lead, LeadStatus, Partner } from "../types";
+import type { ImportPreviewResponse, Lead, LeadStatus } from "../types";
 
 const STATUS_OPTIONS: LeadStatus[] = [
   "NEW",
@@ -59,7 +59,6 @@ function statusIconClass(status: LeadStatus) {
 export function LeadsPage() {
   const { session, logout } = useAuth();
   const [items, setItems] = useState<Lead[]>([]);
-  const [partners, setPartners] = useState<Partner[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<LeadStatus | "">("");
   const [loading, setLoading] = useState(false);
@@ -73,7 +72,6 @@ export function LeadsPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "import">("create");
-  const [selectedPartnerId, setSelectedPartnerId] = useState("");
   const [currentPartnerName, setCurrentPartnerName] = useState("");
   const [formData, setFormData] = useState({
     student_name: "",
@@ -86,7 +84,7 @@ export function LeadsPage() {
   const autoSearchStarted = useRef(false);
 
   const isMaster = session?.user.role === "MASTER";
-  const effectivePartnerId = isMaster ? selectedPartnerId : (session?.user.partnerId ?? "");
+  const effectivePartnerId = session?.user.partnerId ?? undefined;
   const userInfo = useMemo(() => {
     if (!session) return "";
     if (isMaster) {
@@ -119,9 +117,7 @@ export function LeadsPage() {
 
   useEffect(() => {
     void loadLeads();
-    if (isMaster) {
-      void loadPartners();
-    } else {
+    if (!isMaster) {
       void loadCurrentPartner();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,22 +147,6 @@ export function LeadsPage() {
       document.body.style.overflow = currentOverflow;
     };
   }, [createModalOpen]);
-
-  async function loadPartners() {
-    try {
-      const list = await api.getPartners();
-      setPartners(list);
-      if (!selectedPartnerId && list.length > 0) {
-        setSelectedPartnerId(list[0].id);
-      }
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Falha ao carregar partners");
-      }
-    }
-  }
 
   async function loadCurrentPartner() {
     try {
@@ -208,15 +188,15 @@ export function LeadsPage() {
     event.preventDefault();
     setFormError(null);
 
-    if (!effectivePartnerId) {
-      setFormError("Selecione um partner para criar o lead.");
+    if (!isMaster && !effectivePartnerId) {
+      setFormError("Partner do usuario nao encontrado.");
       return;
     }
 
     setCreateLoading(true);
     try {
       await api.createLead({
-        partner_id: effectivePartnerId,
+        partner_id: isMaster ? undefined : effectivePartnerId,
         ...formData
       });
       setFormData({
@@ -244,8 +224,8 @@ export function LeadsPage() {
     event.preventDefault();
     setImportError(null);
 
-    if (!effectivePartnerId) {
-      setImportError("Selecione um partner para importar.");
+    if (!isMaster && !effectivePartnerId) {
+      setImportError("Partner do usuario nao encontrado.");
       return;
     }
     if (!importFile) {
@@ -257,7 +237,7 @@ export function LeadsPage() {
     try {
       const preview = await api.previewImportXls({
         file: importFile,
-        partner_id: effectivePartnerId
+        partner_id: isMaster ? undefined : effectivePartnerId
       });
       setImportPreview(preview);
     } catch (err) {
@@ -372,24 +352,6 @@ export function LeadsPage() {
 
             {modalMode === "create" ? (
               <form className="form-stack" onSubmit={handleCreateLead}>
-                {isMaster ? (
-                  <label>
-                    Partner
-                    <select
-                      value={selectedPartnerId}
-                      onChange={(e) => setSelectedPartnerId(e.target.value)}
-                      required
-                    >
-                      <option value="">Selecione o partner</option>
-                      {partners.map((partner) => (
-                        <option key={partner.id} value={partner.id}>
-                          {partner.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-
                 <label>
                   Nome do estudante
                   <input
@@ -468,24 +430,6 @@ export function LeadsPage() {
             {modalMode === "import" ? (
               <>
                 <form className="form-stack" onSubmit={handleImportPreview}>
-                  {isMaster ? (
-                    <label>
-                      Partner para importação
-                      <select
-                        value={selectedPartnerId}
-                        onChange={(e) => setSelectedPartnerId(e.target.value)}
-                        required
-                      >
-                        <option value="">Selecione o partner</option>
-                        {partners.map((partner) => (
-                          <option key={partner.id} value={partner.id}>
-                            {partner.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-
                   <label>
                     Arquivo
                     <input
