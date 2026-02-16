@@ -67,12 +67,21 @@ a {
   gap: 12px;
 }
 
+.card h2 {
+  font-size: 18px;
+}
+
 .form-stack {
   display: grid;
   gap: 10px;
 }
 
 .form-row {
+  display: grid;
+  gap: 8px;
+}
+
+.form-grid-two {
   display: grid;
   gap: 8px;
 }
@@ -113,6 +122,7 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .button-whatsapp {
@@ -134,6 +144,11 @@ button:disabled {
 
 .empty-state {
   color: #64748b;
+}
+
+.helper-text {
+  color: #475569;
+  font-size: 14px;
 }
 
 .list-stack {
@@ -174,6 +189,11 @@ button:disabled {
   font-size: 14px;
 }
 
+.import-preview {
+  display: grid;
+  gap: 10px;
+}
+
 @media (min-width: 768px) {
   .page-shell {
     padding: 24px;
@@ -186,5 +206,9 @@ button:disabled {
 
   .lead-actions {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .form-grid-two {
+    grid-template-columns: 120px 1fr;
   }
 }

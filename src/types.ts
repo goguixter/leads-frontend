@@ -99,3 +99,42 @@ export type ApiErrorBody = {
     details?: unknown;
   };
 };
+
+export type Partner = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type CurrentPartner = {
+  id: string | null;
+  name: string;
+  isActive: boolean;
+};
+
+export type ImportPreviewResponse = {
+  import_id: string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  preview_sample: Array<{
+    student_name: string;
+    email: string;
+    phone: string;
+    school: string;
+    city: string;
+  }>;
+  errors_sample: Array<{
+    row_number: number;
+    error: string;
+  }>;
+};
+
+export type ImportConfirmResponse = {
+  import_id: string;
+  status: "DRAFT" | "PROCESSING" | "DONE" | "FAILED" | "CANCELED";
+  total_rows: number;
+  success_rows: number;
+  error_rows: number;
+};

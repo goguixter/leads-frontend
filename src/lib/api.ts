@@ -2,10 +2,14 @@ import { clearSession, getSession, setSession } from "./auth-store";
 import type {
   ApiErrorBody,
   GenerateMessageResponse,
+  ImportConfirmResponse,
+  ImportPreviewResponse,
   Lead,
   LeadHistoryResponse,
   LeadsListResponse,
   LeadStatus,
+  CurrentPartner,
+  Partner,
   Session
 } from "../types";
 
@@ -80,7 +84,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { auth = true, retried = false, body, headers, query, ...rest } = options;
   const session = getSession();
   const requestHeaders = new Headers(headers);
-  if (body !== undefined) {
+  const hasBody = body !== undefined && body !== null;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (hasBody && !isFormData) {
     requestHeaders.set("Content-Type", "application/json");
   }
   if (auth && session?.accessToken) {
@@ -90,7 +97,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const response = await fetch(buildUrl(path, query), {
     ...rest,
     headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined
+    body: hasBody ? (isFormData ? body : JSON.stringify(body)) : undefined
   });
 
   if (response.status === 401 && auth && !retried) {
@@ -143,6 +150,26 @@ export const api = {
     return request<LeadsListResponse>("/leads", { method: "GET", query: filters });
   },
 
+  getPartners() {
+    return request<Partner[]>("/partners", { method: "GET" });
+  },
+
+  getCurrentPartner() {
+    return request<CurrentPartner>("/partners/me", { method: "GET" });
+  },
+
+  createLead(payload: {
+    partner_id?: string;
+    student_name: string;
+    email: string;
+    phone_country: string;
+    phone_national: string;
+    school: string;
+    city: string;
+  }) {
+    return request<Lead>("/leads", { method: "POST", body: payload });
+  },
+
   getLeadById(id: string) {
     return request<Lead>(`/leads/${id}`, { method: "GET" });
   },
@@ -157,6 +184,22 @@ export const api = {
 
   generateMessage(id: string) {
     return request<GenerateMessageResponse>(`/leads/${id}/generate-message`, { method: "POST" });
+  },
+
+  previewImportXls(payload: { file: File; partner_id?: string }) {
+    const form = new FormData();
+    form.append("file", payload.file);
+    if (payload.partner_id) {
+      form.append("partner_id", payload.partner_id);
+    }
+    return request<ImportPreviewResponse>("/imports/xls/preview", {
+      method: "POST",
+      body: form
+    });
+  },
+
+  confirmImport(importId: string) {
+    return request<ImportConfirmResponse>(`/imports/${importId}/confirm`, { method: "POST" });
   }
 };
 
