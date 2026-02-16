@@ -70,6 +70,7 @@ export function LeadDetailPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editData, setEditData] = useState({
     student_name: "",
@@ -148,9 +149,11 @@ export function LeadDetailPage() {
   async function handleSaveLead() {
     if (!id) return;
     setSaving(true);
+    setSaveSuccess(null);
     try {
       await api.updateLead(id, editData);
       await loadLeadDetail();
+      setSaveSuccess("Dados alterados com sucesso.");
     } catch (err) {
       if (err instanceof ApiError) {
         alert(err.message);
@@ -219,13 +222,24 @@ export function LeadDetailPage() {
         </Link>
         <div className="detail-header-actions">
           {isMaster ? (
-            <button className="button-danger header-logout-btn" onClick={() => void handleDeleteLead()} disabled={deleting}>
-              {deleting ? "Excluindo..." : "Excluir"}
+            <button
+              className="button-danger detail-header-icon-btn"
+              onClick={() => void handleDeleteLead()}
+              disabled={deleting}
+              title={deleting ? "Excluindo..." : "Excluir"}
+              aria-label="Excluir"
+            >
+              <i className="bi bi-trash-fill" aria-hidden="true" />
             </button>
           ) : null}
           {isMaster ? (
-            <button className="button-whatsapp header-logout-btn" onClick={() => void handleSendWhatsApp()}>
-              <i className="bi bi-whatsapp" aria-hidden="true" /> WhatsApp
+            <button
+              className="button-whatsapp detail-header-icon-btn"
+              onClick={() => void handleSendWhatsApp()}
+              title="WhatsApp"
+              aria-label="WhatsApp"
+            >
+              <i className="bi bi-whatsapp" aria-hidden="true" />
             </button>
           ) : null}
         </div>
@@ -306,8 +320,15 @@ export function LeadDetailPage() {
           )}
         </label>
         <button className="button-primary" onClick={() => void handleSaveLead()} disabled={saving}>
-          {saving ? "Salvando..." : "Salvar alterações"}
+          {saving ? (
+            "Salvando..."
+          ) : (
+            <>
+              <i className="bi bi-floppy-fill" aria-hidden="true" /> Salvar alterações
+            </>
+          )}
         </button>
+        {saveSuccess ? <p className="helper-text">{saveSuccess}</p> : null}
       </section>
 
       <section className="card">

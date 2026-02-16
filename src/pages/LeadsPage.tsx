@@ -313,6 +313,12 @@ export function LeadsPage() {
 
   async function handleConfirmImport() {
     if (!importPreview) return;
+    if (importPreview.duplicate_rows > 0 && !ignoreDuplicateOnImport) {
+      setImportError(
+        "Existem leads duplicados no preview. Marque para ignorar duplicados antes de confirmar."
+      );
+      return;
+    }
     setConfirmLoading(true);
     setImportError(null);
     try {
@@ -644,8 +650,10 @@ export function LeadsPage() {
               </label>
             ) : null}
 
+            {importError ? <p className="error-message">{importError}</p> : null}
+
             <button
-              className="button-whatsapp header-logout-btn"
+              className="button-whatsapp header-logout-btn preview-confirm-btn"
               onClick={() => void handleConfirmImport()}
               disabled={confirmLoading}
             >

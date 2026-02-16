@@ -1,7 +1,7 @@
 :root {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: #0f172a;
-  background: #f1f5f9;
+  background: #fcfdff;
   line-height: 1.4;
   font-weight: 400;
 }
@@ -13,6 +13,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: #fcfdff;
 }
 
 h1,
@@ -235,6 +236,7 @@ button:disabled {
   border-radius: 14px;
   padding: 12px;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12), 0 3px 10px rgba(15, 23, 42, 0.08);
+  border: 1px solid #dbe5f0;
   display: grid;
   gap: 12px;
   position: relative;
@@ -242,26 +244,32 @@ button:disabled {
 
 .lead-card-status-new {
   background: #eaf3ff;
+  border-color: #93c5fd;
 }
 
 .lead-card-status-first_contact {
   background: #e6f7ff;
+  border-color: #7dd3fc;
 }
 
 .lead-card-status-responded {
   background: #eafbea;
+  border-color: #86efac;
 }
 
 .lead-card-status-no_response {
   background: #fff7dd;
+  border-color: #fcd34d;
 }
 
 .lead-card-status-won {
   background: #ddf8ef;
+  border-color: #6ee7b7;
 }
 
 .lead-card-status-lost {
   background: #ffe9e9;
+  border-color: #fca5a5;
 }
 
 .lead-detail-card {
@@ -274,57 +282,117 @@ button:disabled {
   justify-content: flex-end;
 }
 
+.detail-header-icon-btn {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 18px;
+}
+
+.detail-header-actions .button-whatsapp.detail-header-icon-btn {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.detail-header-actions .button-whatsapp.detail-header-icon-btn:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.detail-header-actions .button-danger.detail-header-icon-btn {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.detail-header-actions .button-danger.detail-header-icon-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 .lead-main {
   display: grid;
   gap: 4px;
+}
+
+.lead-main h2,
+.lead-main p {
+  position: relative;
+  z-index: 2;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 58px;
-  height: 40px;
+  width: 227px;
+  height: 157px;
   border-radius: 10px;
-  font-size: 20px;
+  font-size: 78px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.status-badge i {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
 }
 
 .status-badge-corner {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.lead-card .status-badge {
+  width: 120px;
+  font-size: 120px;
+}
+
+.lead-card .status-badge-corner {
+  top: -10px;
+  right: 15px;
 }
 
 .status-new {
-  background: #dbeafe;
   color: #1d4ed8;
 }
 
 .status-first_contact {
-  background: #e0f2fe;
   color: #0369a1;
 }
 
 .status-responded {
-  background: #dcfce7;
   color: #15803d;
 }
 
 .status-no_response {
-  background: #fef3c7;
   color: #a16207;
 }
 
 .status-won {
-  background: #d1fae5;
   color: #047857;
 }
 
 .status-lost {
-  background: #fee2e2;
   color: #b91c1c;
 }
 
@@ -475,6 +543,16 @@ button:disabled {
   height: 44px;
   margin-left: 0;
   margin-right: 0;
+}
+
+.preview-table-modal .preview-confirm-btn {
+  background: #16a34a;
+  color: #f8fafc;
+  border: 1px solid #16a34a;
+}
+
+.preview-table-modal .preview-confirm-btn:hover:not(:disabled) {
+  background: #15803d;
 }
 
 .modal-header {
