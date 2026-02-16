@@ -100,6 +100,25 @@ export function LeadsPage() {
     return currentPartnerName ? `PARTNER • ${currentPartnerName}` : "PARTNER";
   }, [currentPartnerName, isMaster, session]);
 
+  const previewRows = useMemo(() => {
+    if (!importPreview) return [];
+    if (importPreview.preview_rows && importPreview.preview_rows.length > 0) {
+      return importPreview.preview_rows;
+    }
+    return importPreview.preview_sample.map((row, index) => ({
+      row_number: index + 2,
+      ...row,
+      is_duplicate: false,
+      duplicate_fields: [] as Array<"phone" | "email" | "name">,
+      error: null
+    }));
+  }, [importPreview]);
+
+  const previewErrors = useMemo(() => {
+    if (!importPreview) return [];
+    return importPreview.errors_sample.filter((item) => !item.error.startsWith("DUPLICATE_LEAD:"));
+  }, [importPreview]);
+
   async function loadLeads(options?: { page?: number; append?: boolean }) {
     const page = options?.page ?? 1;
     const append = options?.append ?? false;
@@ -559,11 +578,21 @@ export function LeadsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {importPreview.preview_sample.map((row, index) => (
-                    <tr key={`${row.email}-${index}`}>
-                      <td>{row.student_name}</td>
-                      <td>{row.email}</td>
-                      <td>{row.phone}</td>
+                  {previewRows.map((row) => (
+                    <tr
+                      key={`${row.row_number}-${row.email}-${row.phone}`}
+                      className={row.is_duplicate ? "preview-row-duplicate" : row.error ? "preview-row-error" : ""}
+                      title={row.error ?? undefined}
+                    >
+                      <td className={row.duplicate_fields.includes("name") ? "preview-cell-duplicate" : ""}>
+                        {row.student_name}
+                      </td>
+                      <td className={row.duplicate_fields.includes("email") ? "preview-cell-duplicate" : ""}>
+                        {row.email}
+                      </td>
+                      <td className={row.duplicate_fields.includes("phone") ? "preview-cell-duplicate" : ""}>
+                        {row.phone}
+                      </td>
                       <td>{row.school}</td>
                       <td>{row.city}</td>
                     </tr>
@@ -572,9 +601,24 @@ export function LeadsPage() {
               </table>
             </div>
 
-            {importPreview.errors_sample.length > 0 ? (
+            <div className="preview-legend">
+              <span className="preview-legend-item">
+                <span className="preview-legend-swatch preview-legend-swatch-duplicate-row" />
+                Linha com lead duplicado
+              </span>
+              <span className="preview-legend-item">
+                <span className="preview-legend-swatch preview-legend-swatch-duplicate-cell" />
+                Campo que causou duplicidade (nome, email ou telefone)
+              </span>
+              <span className="preview-legend-item">
+                <span className="preview-legend-swatch preview-legend-swatch-error-row" />
+                Linha inválida por validação
+              </span>
+            </div>
+
+            {previewErrors.length > 0 ? (
               <div className="timeline">
-                {importPreview.errors_sample.map((item) => (
+                {previewErrors.map((item) => (
                   <article className="timeline-item" key={`${item.row_number}-${item.error}`}>
                     <p>Linha {item.row_number}</p>
                     <p>{item.error}</p>

@@ -119,6 +119,17 @@ export type ImportPreviewResponse = {
   valid_rows: number;
   invalid_rows: number;
   duplicate_rows: number;
+  preview_rows?: Array<{
+    row_number: number;
+    student_name: string;
+    email: string;
+    phone: string;
+    school: string;
+    city: string;
+    is_duplicate: boolean;
+    duplicate_fields: Array<"phone" | "email" | "name">;
+    error: string | null;
+  }>;
   preview_sample: Array<{
     student_name: string;
     email: string;
