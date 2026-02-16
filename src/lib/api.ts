@@ -80,7 +80,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const { auth = true, retried = false, body, headers, query, ...rest } = options;
   const session = getSession();
   const requestHeaders = new Headers(headers);
-  requestHeaders.set("Content-Type", "application/json");
+  if (body !== undefined) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
   if (auth && session?.accessToken) {
     requestHeaders.set("Authorization", `Bearer ${session.accessToken}`);
   }
