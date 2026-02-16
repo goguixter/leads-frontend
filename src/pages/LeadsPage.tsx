@@ -48,7 +48,7 @@ function statusIconClass(status: LeadStatus) {
     case "NO_RESPONSE":
       return "bi bi-telephone-x-fill";
     case "WON":
-      return "bi bi-trophy-fill";
+      return "bi bi-airplane-fill";
     case "LOST":
       return "bi bi-x-circle-fill";
     default:
@@ -57,12 +57,15 @@ function statusIconClass(status: LeadStatus) {
 }
 
 export function LeadsPage() {
+  const PAGE_SIZE = 30;
   const { session, logout } = useAuth();
   const [items, setItems] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<LeadStatus | "">("");
   const [totalFilteredLeads, setTotalFilteredLeads] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -97,18 +100,26 @@ export function LeadsPage() {
     return currentPartnerName ? `PARTNER • ${currentPartnerName}` : "PARTNER";
   }, [currentPartnerName, isMaster, session]);
 
-  async function loadLeads() {
-    setLoading(true);
+  async function loadLeads(options?: { page?: number; append?: boolean }) {
+    const page = options?.page ?? 1;
+    const append = options?.append ?? false;
+
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const response = await api.getLeads({
         search: search.trim() || undefined,
         status: status || undefined,
-        page: 1,
-        page_size: 30
+        page,
+        page_size: PAGE_SIZE
       });
-      setItems(response.items);
+      setItems((current) => (append ? [...current, ...response.items] : response.items));
       setTotalFilteredLeads(response.pagination.total);
+      setCurrentPage(page);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -116,12 +127,16 @@ export function LeadsPage() {
         setError("Falha ao carregar leads");
       }
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    void loadLeads();
+    void loadLeads({ page: 1 });
     if (!isMaster) {
       void loadCurrentPartner();
     }
@@ -135,7 +150,8 @@ export function LeadsPage() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      void loadLeads();
+      void loadLeads({ page: 1 });
+      setCurrentPage(1);
     }, 350);
 
     return () => {
@@ -185,6 +201,24 @@ export function LeadsPage() {
         alert(err.message);
       } else {
         alert("Erro ao atualizar status");
+      }
+    }
+  }
+
+  async function handleDeleteLead(leadId: string) {
+    if (!isMaster) return;
+    const confirmed = window.confirm("Deseja realmente excluir este lead?");
+    if (!confirmed) return;
+
+    try {
+      await api.deleteLead(leadId);
+      setItems((current) => current.filter((lead) => lead.id !== leadId));
+      setTotalFilteredLeads((current) => Math.max(0, current - 1));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+      } else {
+        alert("Erro ao excluir lead");
       }
     }
   }
@@ -294,6 +328,20 @@ export function LeadsPage() {
     setIgnoreDuplicateOnImport(true);
   }
 
+  function handleSearchClick() {
+    setCurrentPage(1);
+    void loadLeads({ page: 1 });
+  }
+
+  function handleLoadMore() {
+    if (loadingMore || loading) return;
+    void loadLeads({ page: currentPage + 1, append: true });
+  }
+
+  function handleBackToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main className="page-shell">
       <header className="topbar">
@@ -322,7 +370,7 @@ export function LeadsPage() {
               </option>
             ))}
           </select>
-          <button className="button-primary" onClick={() => void loadLeads()} disabled={loading}>
+          <button className="button-primary" onClick={handleSearchClick} disabled={loading}>
             {loading ? (
               "Carregando..."
             ) : (
@@ -354,7 +402,9 @@ export function LeadsPage() {
             <span className="hide-mobile-only">Importar planilha</span>
           </button>
         </div>
-        <p className="results-info">Mostrando {totalFilteredLeads} leads</p>
+        <p className="results-info">
+          Mostrando {items.length} de {totalFilteredLeads} leads
+        </p>
       </section>
 
       {error ? <p className="error-message">{error}</p> : null}
@@ -574,33 +624,76 @@ export function LeadsPage() {
               </p>
             </div>
             <div className="lead-actions">
-              <div className={`lead-action-row${isMaster ? "" : " single-action"}`}>
-                {isMaster ? (
-                  <button className="button-whatsapp" onClick={() => void handleSendWhatsApp(lead.id)}>
-                    <i className="bi bi-whatsapp" aria-hidden="true" /> WhatsApp
-                  </button>
-                ) : null}
-                <Link className="button-secondary action-btn" to={`/leads/${lead.id}`}>
-                  <i className="bi bi-person-lines-fill" aria-hidden="true" /> Detalhes
-                </Link>
-              </div>
-              {isMaster ? (
-                <select
-                  value={lead.status}
-                  onChange={(e) => void handleStatusChange(lead.id, e.target.value as LeadStatus)}
+              <div className="lead-action-row">
+                <button
+                  className="icon-action-btn button-whatsapp"
+                  onClick={() => void handleSendWhatsApp(lead.id)}
+                  disabled={!isMaster}
+                  title={isMaster ? "WhatsApp" : "Apenas MASTER"}
                 >
-                  {STATUS_OPTIONS.map((item) => (
-                    <option key={item} value={item}>
-                      {statusLabel(item)}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
+                  <i className="bi bi-whatsapp" aria-hidden="true" />
+                </button>
+
+                <Link className="icon-action-btn button-secondary" to={`/leads/${lead.id}`} title="Detalhes">
+                  <i className="bi bi-person-lines-fill" aria-hidden="true" />
+                </Link>
+
+                {isMaster ? (
+                  <details className="status-picker">
+                    <summary className="icon-action-btn button-secondary" title="Etiqueta">
+                      <i className="bi bi-tag-fill" aria-hidden="true" />
+                    </summary>
+                    <div className="status-menu">
+                      {STATUS_OPTIONS.map((item) => (
+                        <button
+                          key={item}
+                          className="status-menu-item"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            void handleStatusChange(lead.id, item);
+                            const details = (e.currentTarget.closest("details") as HTMLDetailsElement | null);
+                            if (details) details.open = false;
+                          }}
+                        >
+                          {statusLabel(item)}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                ) : (
+                  <button className="icon-action-btn button-secondary" disabled title="Apenas MASTER">
+                    <i className="bi bi-tag-fill" aria-hidden="true" />
+                  </button>
+                )}
+
+                <button
+                  className="icon-action-btn button-danger"
+                  onClick={() => void handleDeleteLead(lead.id)}
+                  disabled={!isMaster}
+                  title={isMaster ? "Excluir" : "Apenas MASTER"}
+                >
+                  <i className="bi bi-trash-fill" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </article>
         ))}
 
         {!loading && items.length === 0 ? <p className="empty-state">Nenhum lead encontrado.</p> : null}
+      </section>
+
+      {!loading && items.length < totalFilteredLeads ? (
+        <section className="card">
+          <button className="button-primary" onClick={handleLoadMore} disabled={loadingMore}>
+            {loadingMore ? "Carregando..." : "Carregar mais"}
+          </button>
+        </section>
+      ) : null}
+
+      <section className="card">
+        <button className="button-secondary" onClick={handleBackToTop}>
+          <i className="bi bi-arrow-up" aria-hidden="true" /> Voltar ao topo
+        </button>
       </section>
     </main>
   );

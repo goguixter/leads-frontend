@@ -301,12 +301,81 @@ button:disabled {
 
 .lead-action-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  align-items: stretch;
 }
 
-.lead-action-row.single-action {
-  grid-template-columns: 1fr;
+.icon-action-btn {
+  min-height: 44px;
+  max-height: 44px;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 18px;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.status-picker {
+  position: relative;
+  width: 100%;
+}
+
+.status-picker summary {
+  list-style: none;
+  cursor: pointer;
+  margin: 0;
+}
+
+.lead-action-row .button-secondary.icon-action-btn,
+.status-picker > summary.icon-action-btn {
+  border: 1px solid #94a3b8;
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0;
+  width: 100%;
+}
+
+.status-picker summary::-webkit-details-marker {
+  display: none;
+}
+
+.status-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  min-width: 210px;
+  overflow: hidden;
+}
+
+.status-menu-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0;
+  background: #fff;
+  color: #0f172a;
+  text-align: left;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-menu-item:last-child {
+  border-bottom: 0;
+}
+
+.status-menu-item:hover {
+  background: #f8fafc;
 }
 
 .timeline {
@@ -464,12 +533,5 @@ button:disabled {
 
   .hide-mobile-only {
     display: none;
-  }
-}
-
-@media (min-width: 1024px) {
-  .list-stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
   }
 }

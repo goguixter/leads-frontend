@@ -48,7 +48,7 @@ function statusIconClass(status: LeadStatus) {
     case "NO_RESPONSE":
       return "bi bi-telephone-x-fill";
     case "WON":
-      return "bi bi-trophy-fill";
+      return "bi bi-airplane-fill";
     case "LOST":
       return "bi bi-x-circle-fill";
     default:
