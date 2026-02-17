@@ -205,6 +205,10 @@ export const api = {
     return requestBlob("/leads/export/xlsx", { method: "GET", query: filters });
   },
 
+  exportLeadsCsv(filters: LeadsExportFilters) {
+    return requestBlob("/leads/export/csv", { method: "GET", query: filters });
+  },
+
   getPartners() {
     return request<Partner[]>("/partners", { method: "GET" });
   },

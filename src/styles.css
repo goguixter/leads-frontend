@@ -93,7 +93,8 @@ a {
   gap: 8px;
 }
 
-.action-row-three {
+.action-row-three,
+.action-row-four {
   grid-template-columns: 1fr;
 }
 
@@ -886,6 +887,10 @@ button:disabled {
 
   .action-row-three {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .action-row-four {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .list-stack {

@@ -85,6 +85,7 @@ export function LeadsPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportCsvLoading, setExportCsvLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
@@ -423,7 +424,7 @@ export function LeadsPage() {
       return;
     }
     if (!importFile) {
-      setImportError("Selecione um arquivo .xls ou .xlsx.");
+      setImportError("Selecione um arquivo .csv, .xls ou .xlsx.");
       return;
     }
 
@@ -531,6 +532,32 @@ export function LeadsPage() {
     }
   }
 
+  async function handleExportLeadsCsv() {
+    setExportCsvLoading(true);
+    try {
+      const blob = await api.exportLeadsCsv({
+        search: search.trim() || undefined,
+        status: status || undefined
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `leads-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+      } else {
+        alert("Erro ao exportar leads em CSV");
+      }
+    } finally {
+      setExportCsvLoading(false);
+    }
+  }
+
   return (
     <main className="page-shell">
       <header className="topbar">
@@ -569,7 +596,7 @@ export function LeadsPage() {
             )}
           </button>
         </div>
-        <div className="action-row action-row-three">
+        <div className="action-row action-row-four">
           <button
             className="button-secondary"
             onClick={() => {
@@ -595,6 +622,19 @@ export function LeadsPage() {
             ) : (
               <>
                 <i className="bi bi-file-earmark-excel-fill" aria-hidden="true" /> Exportar XLSX
+              </>
+            )}
+          </button>
+          <button
+            className="button-secondary"
+            onClick={() => void handleExportLeadsCsv()}
+            disabled={exportCsvLoading}
+          >
+            {exportCsvLoading ? (
+              "Exportando..."
+            ) : (
+              <>
+                <i className="bi bi-filetype-csv" aria-hidden="true" /> Exportar CSV
               </>
             )}
           </button>
@@ -740,7 +780,7 @@ export function LeadsPage() {
                     Arquivo
                     <input
                       type="file"
-                      accept=".xls,.xlsx"
+                      accept=".csv,.xls,.xlsx"
                       onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
                       required
                     />
