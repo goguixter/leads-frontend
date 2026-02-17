@@ -29,6 +29,14 @@ type LeadsFilters = {
   page_size?: number;
 };
 
+type LeadsExportFilters = {
+  partner_id?: string;
+  status?: LeadStatus;
+  school?: string;
+  city?: string;
+  search?: string;
+};
+
 class ApiError extends Error {
   status: number;
   code: string;
@@ -127,6 +135,49 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await parseResponseBody(response)) as T;
 }
 
+async function requestBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const { auth = true, retried = false, body, headers, query, ...rest } = options;
+  const session = getSession();
+  const requestHeaders = new Headers(headers);
+  const hasBody = body !== undefined && body !== null;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (hasBody && !isFormData) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+  if (auth && session?.accessToken) {
+    requestHeaders.set("Authorization", `Bearer ${session.accessToken}`);
+  }
+
+  const response = await fetch(buildUrl(path, query), {
+    ...rest,
+    headers: requestHeaders,
+    body: hasBody ? (isFormData ? body : JSON.stringify(body)) : undefined
+  });
+
+  if (response.status === 401 && auth && !retried) {
+    const refreshed = await tryRefreshSession();
+    if (refreshed) {
+      return requestBlob(path, { ...options, retried: true });
+    }
+  }
+
+  if (!response.ok) {
+    const errorBody = (await parseResponseBody(response)) as ApiErrorBody | null;
+    if (errorBody?.error) {
+      throw new ApiError(
+        response.status,
+        errorBody.error.code,
+        errorBody.error.message,
+        errorBody.error.details
+      );
+    }
+    throw new ApiError(response.status, "HTTP_ERROR", `HTTP ${response.status}`);
+  }
+
+  return response.blob();
+}
+
 export const api = {
   async login(email: string, password: string) {
     const session = await request<Session>("/auth/login", {
@@ -148,6 +199,10 @@ export const api = {
 
   getLeads(filters: LeadsFilters) {
     return request<LeadsListResponse>("/leads", { method: "GET", query: filters });
+  },
+
+  exportLeadsXlsx(filters: LeadsExportFilters) {
+    return requestBlob("/leads/export/xlsx", { method: "GET", query: filters });
   },
 
   getPartners() {

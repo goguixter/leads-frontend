@@ -84,6 +84,7 @@ export function LeadsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreviewResponse | null>(null);
@@ -504,6 +505,32 @@ export function LeadsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function handleExportLeads() {
+    setExportLoading(true);
+    try {
+      const blob = await api.exportLeadsXlsx({
+        search: search.trim() || undefined,
+        status: status || undefined
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `leads-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+      } else {
+        alert("Erro ao exportar leads");
+      }
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
   return (
     <main className="page-shell">
       <header className="topbar">
@@ -542,7 +569,7 @@ export function LeadsPage() {
             )}
           </button>
         </div>
-        <div className="action-row">
+        <div className="action-row action-row-three">
           <button
             className="button-secondary"
             onClick={() => {
@@ -559,9 +586,17 @@ export function LeadsPage() {
               setCreateModalOpen(true);
             }}
           >
-            <i className="bi bi-upload" aria-hidden="true" />
-            <span className="show-mobile-only">Importar</span>
-            <span className="hide-mobile-only">Importar planilha</span>
+            <i className="bi bi-file-earmark-excel" aria-hidden="true" />
+            <span>Importar XLSX</span>
+          </button>
+          <button className="button-secondary" onClick={() => void handleExportLeads()} disabled={exportLoading}>
+            {exportLoading ? (
+              "Exportando..."
+            ) : (
+              <>
+                <i className="bi bi-file-earmark-excel-fill" aria-hidden="true" /> Exportar XLSX
+              </>
+            )}
           </button>
         </div>
         <p className="results-info">
