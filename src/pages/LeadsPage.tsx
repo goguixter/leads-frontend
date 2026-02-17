@@ -1,7 +1,20 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, api } from "../lib/api";
+import {
+  caretFromDigitIndex,
+  COUNTRIES,
+  countDigitsBeforeCaret,
+  countryDdiByIso2,
+  countryFlagSvgUrlByIso2,
+  digitsOnly,
+  formatNationalPhoneByCountryIso2,
+  formatLeadPhoneForDisplay,
+  maxPhoneDigitsByCountryIso2,
+  phonePlaceholderByCountryIso2,
+  removeDigitAtIndex
+} from "../lib/countries";
 import { openWhatsApp } from "../lib/whatsapp";
 import type { ImportPreviewResponse, Lead, LeadStatus } from "../types";
 
@@ -85,11 +98,16 @@ export function LeadsPage() {
     student_name: "",
     email: "",
     phone_country: "BR",
-    phone_national: "",
     school: "",
     city: ""
   });
+  const [rawPhoneDigits, setRawPhoneDigits] = useState("");
+  const [createCountryIso2, setCreateCountryIso2] = useState("BR");
+  const [createCountryOpen, setCreateCountryOpen] = useState(false);
   const autoSearchStarted = useRef(false);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const createCountryPickerRef = useRef<HTMLDivElement | null>(null);
+  const nextPhoneCaretRef = useRef<number | null>(null);
 
   const isMaster = session?.user.role === "MASTER";
   const effectivePartnerId = session?.user.partnerId ?? undefined;
@@ -119,6 +137,80 @@ export function LeadsPage() {
     if (!importPreview) return [];
     return importPreview.errors_sample.filter((item) => !item.error.startsWith("DUPLICATE_LEAD:"));
   }, [importPreview]);
+
+  const createPhonePlaceholder = useMemo(
+    () => phonePlaceholderByCountryIso2(createCountryIso2),
+    [createCountryIso2]
+  );
+  const createCountryDdi = useMemo(() => countryDdiByIso2(createCountryIso2), [createCountryIso2]);
+  const createCountryFlagUrl = useMemo(
+    () => countryFlagSvgUrlByIso2(createCountryIso2),
+    [createCountryIso2]
+  );
+  const createPhoneMaskedValue = useMemo(
+    () => formatNationalPhoneByCountryIso2(rawPhoneDigits, createCountryIso2),
+    [rawPhoneDigits, createCountryIso2]
+  );
+
+  useEffect(() => {
+    const maxDigits = maxPhoneDigitsByCountryIso2(createCountryIso2);
+    if (rawPhoneDigits.length <= maxDigits) return;
+    setRawPhoneDigits((current) => current.slice(0, maxDigits));
+  }, [createCountryIso2, rawPhoneDigits.length]);
+
+  useEffect(() => {
+    if (nextPhoneCaretRef.current === null) return;
+    const element = phoneInputRef.current;
+    if (!element) return;
+    const caret = nextPhoneCaretRef.current;
+    nextPhoneCaretRef.current = null;
+    window.requestAnimationFrame(() => {
+      element.setSelectionRange(caret, caret);
+    });
+  }, [createPhoneMaskedValue]);
+
+  function handlePhoneInputChange(value: string, selectionStart: number | null) {
+    const maxDigits = maxPhoneDigitsByCountryIso2(createCountryIso2);
+    const nextDigits = digitsOnly(value).slice(0, maxDigits);
+    const caretDigitIndex = countDigitsBeforeCaret(value, selectionStart ?? value.length);
+    setRawPhoneDigits(nextDigits);
+    const masked = formatNationalPhoneByCountryIso2(nextDigits, createCountryIso2);
+    nextPhoneCaretRef.current = caretFromDigitIndex(masked, Math.min(caretDigitIndex, nextDigits.length));
+  }
+
+  function handlePhoneKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const element = event.currentTarget;
+    const selectionStart = element.selectionStart ?? 0;
+    const selectionEnd = element.selectionEnd ?? selectionStart;
+    if (selectionStart !== selectionEnd) return;
+
+    const masked = createPhoneMaskedValue;
+    const key = event.key;
+
+    if (key === "Backspace" && selectionStart > 0) {
+      const charBefore = masked[selectionStart - 1];
+      if (charBefore && !/\d/.test(charBefore)) {
+        event.preventDefault();
+        const digitIndex = countDigitsBeforeCaret(masked, selectionStart);
+        const nextDigits = removeDigitAtIndex(rawPhoneDigits, digitIndex - 1);
+        const nextMasked = formatNationalPhoneByCountryIso2(nextDigits, createCountryIso2);
+        setRawPhoneDigits(nextDigits);
+        nextPhoneCaretRef.current = caretFromDigitIndex(nextMasked, Math.max(0, digitIndex - 1));
+      }
+    }
+
+    if (key === "Delete" && selectionStart < masked.length) {
+      const charAtCaret = masked[selectionStart];
+      if (charAtCaret && !/\d/.test(charAtCaret)) {
+        event.preventDefault();
+        const digitIndex = countDigitsBeforeCaret(masked, selectionStart);
+        const nextDigits = removeDigitAtIndex(rawPhoneDigits, digitIndex);
+        const nextMasked = formatNationalPhoneByCountryIso2(nextDigits, createCountryIso2);
+        setRawPhoneDigits(nextDigits);
+        nextPhoneCaretRef.current = caretFromDigitIndex(nextMasked, digitIndex);
+      }
+    }
+  }
 
   async function loadLeads(options?: { page?: number; append?: boolean }) {
     const page = options?.page ?? 1;
@@ -188,6 +280,21 @@ export function LeadsPage() {
       document.body.style.overflow = currentOverflow;
     };
   }, [createModalOpen]);
+
+  useEffect(() => {
+    if (!createCountryOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (createCountryPickerRef.current?.contains(target)) return;
+      setCreateCountryOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [createCountryOpen]);
 
   useEffect(() => {
     function updateCanScrollPage() {
@@ -280,16 +387,19 @@ export function LeadsPage() {
       await api.createLead({
         partner_id: isMaster ? undefined : effectivePartnerId,
         ignore_duplicates: ignoreDuplicateOnCreate,
-        ...formData
+        ...formData,
+        phone_country: createCountryIso2,
+        phone_national: rawPhoneDigits
       });
       setFormData({
         student_name: "",
         email: "",
         phone_country: "BR",
-        phone_national: "",
         school: "",
         city: ""
       });
+      setRawPhoneDigits("");
+      setCreateCountryIso2("BR");
       setCreateModalOpen(false);
       await loadLeads();
     } catch (err) {
@@ -375,6 +485,9 @@ export function LeadsPage() {
     setImportError(null);
     setIgnoreDuplicateOnCreate(false);
     setIgnoreDuplicateOnImport(true);
+    setRawPhoneDigits("");
+    setCreateCountryIso2("BR");
+    setCreateCountryOpen(false);
   }
 
   function handleSearchClick() {
@@ -492,29 +605,57 @@ export function LeadsPage() {
                   />
                 </label>
 
-                <div className="form-grid-two">
-                  <label>
-                    País (ISO2)
+                <div className="form-row">
+                  <span className="field-label">Telefone</span>
+                  <div className="phone-inline-group">
+                    <div
+                      className={`country-picker phone-inline-country${createCountryOpen ? " is-open" : ""}`}
+                      ref={createCountryPickerRef}
+                    >
+                      <button
+                        type="button"
+                        className="country-picker-summary"
+                        style={{ backgroundImage: `url(${createCountryFlagUrl})` }}
+                        aria-label="Pais"
+                        aria-expanded={createCountryOpen}
+                        onClick={() => setCreateCountryOpen((current) => !current)}
+                      />
+                      {createCountryOpen ? (
+                        <div className="country-picker-menu">
+                        {COUNTRIES.map((country) => (
+                          <button
+                            key={country.iso2}
+                            type="button"
+                            className="country-picker-item"
+                            onClick={() => {
+                              setCreateCountryIso2(country.iso2);
+                              setCreateCountryOpen(false);
+                            }}
+                          >
+                            <span>{country.flag}</span>
+                            <span>{country.name}</span>
+                          </button>
+                        ))}
+                        </div>
+                      ) : null}
+                    </div>
                     <input
-                      value={formData.phone_country}
-                      maxLength={2}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          phone_country: e.target.value.toUpperCase()
-                        }))
-                      }
+                      className="phone-inline-ddi"
+                      value={createCountryDdi}
+                      readOnly
+                      aria-label="Codigo do pais"
+                    />
+                    <input
+                      className="phone-inline-number"
+                      placeholder={createPhonePlaceholder}
+                      ref={phoneInputRef}
+                      value={createPhoneMaskedValue}
+                      onKeyDown={handlePhoneKeyDown}
+                      onChange={(e) => handlePhoneInputChange(e.target.value, e.target.selectionStart)}
+                      aria-label="Telefone nacional"
                       required
                     />
-                  </label>
-                  <label>
-                    Telefone nacional
-                    <input
-                      value={formData.phone_national}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, phone_national: e.target.value }))}
-                      required
-                    />
-                  </label>
+                  </div>
                 </div>
 
                 <label>
@@ -700,7 +841,7 @@ export function LeadsPage() {
                 <i className={statusIconClass(lead.status)} aria-hidden="true" />
               </span>
               <p>{lead.email}</p>
-              <p>{lead.phoneE164}</p>
+              <p>{formatLeadPhoneForDisplay(lead.phoneE164, lead.phoneCountry)}</p>
               <p>
                 {lead.school} • {lead.city}
               </p>

@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ApiError, api } from "../lib/api";
+import {
+  caretFromDigitIndex,
+  COUNTRIES,
+  countDigitsBeforeCaret,
+  countryDdiByIso2,
+  countryFlagSvgUrlByIso2,
+  digitsOnly,
+  formatLeadPhoneForDisplay,
+  formatNationalPhoneByCountryIso2,
+  maxPhoneDigitsByCountryIso2,
+  nationalDigitsFromE164,
+  phonePlaceholderByCountryIso2,
+  removeDigitAtIndex
+} from "../lib/countries";
 import { openWhatsApp } from "../lib/whatsapp";
 import type { ContactEventItem, Lead, LeadStatus, LeadStatusHistoryItem } from "../types";
 
@@ -52,12 +66,91 @@ export function LeadDetailPage() {
   const [editData, setEditData] = useState({
     student_name: "",
     email: "",
-    phone_country: "BR",
-    phone_national: "",
     school: "",
     city: ""
   });
+  const [editCountryIso2, setEditCountryIso2] = useState("BR");
+  const [editCountryOpen, setEditCountryOpen] = useState(false);
+  const [rawPhoneDigits, setRawPhoneDigits] = useState("");
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const editCountryPickerRef = useRef<HTMLDivElement | null>(null);
+  const nextPhoneCaretRef = useRef<number | null>(null);
   const isMaster = session?.user.role === "MASTER";
+
+  const editCountryDdi = useMemo(() => countryDdiByIso2(editCountryIso2), [editCountryIso2]);
+  const editCountryFlagUrl = useMemo(() => countryFlagSvgUrlByIso2(editCountryIso2), [editCountryIso2]);
+  const editPhonePlaceholder = useMemo(
+    () => phonePlaceholderByCountryIso2(editCountryIso2),
+    [editCountryIso2]
+  );
+  const editPhoneMaskedValue = useMemo(
+    () => formatNationalPhoneByCountryIso2(rawPhoneDigits, editCountryIso2),
+    [rawPhoneDigits, editCountryIso2]
+  );
+  const editPhoneFullDisplay = useMemo(() => {
+    if (!editPhoneMaskedValue) return "";
+    return `${editCountryDdi} ${editPhoneMaskedValue}`.trim();
+  }, [editCountryDdi, editPhoneMaskedValue]);
+
+  useEffect(() => {
+    const maxDigits = maxPhoneDigitsByCountryIso2(editCountryIso2);
+    if (rawPhoneDigits.length <= maxDigits) return;
+    setRawPhoneDigits((current) => current.slice(0, maxDigits));
+  }, [editCountryIso2, rawPhoneDigits.length]);
+
+  useEffect(() => {
+    if (nextPhoneCaretRef.current === null) return;
+    const element = phoneInputRef.current;
+    if (!element) return;
+    const caret = nextPhoneCaretRef.current;
+    nextPhoneCaretRef.current = null;
+    window.requestAnimationFrame(() => {
+      element.setSelectionRange(caret, caret);
+    });
+  }, [editPhoneMaskedValue]);
+
+  function handlePhoneInputChange(value: string, selectionStart: number | null) {
+    const maxDigits = maxPhoneDigitsByCountryIso2(editCountryIso2);
+    const nextDigits = digitsOnly(value).slice(0, maxDigits);
+    const caretDigitIndex = countDigitsBeforeCaret(value, selectionStart ?? value.length);
+    setRawPhoneDigits(nextDigits);
+    const masked = formatNationalPhoneByCountryIso2(nextDigits, editCountryIso2);
+    nextPhoneCaretRef.current = caretFromDigitIndex(masked, Math.min(caretDigitIndex, nextDigits.length));
+  }
+
+  function handlePhoneKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const element = event.currentTarget;
+    const selectionStart = element.selectionStart ?? 0;
+    const selectionEnd = element.selectionEnd ?? selectionStart;
+    if (selectionStart !== selectionEnd) return;
+
+    const masked = editPhoneMaskedValue;
+    const key = event.key;
+
+    if (key === "Backspace" && selectionStart > 0) {
+      const charBefore = masked[selectionStart - 1];
+      if (charBefore && !/\d/.test(charBefore)) {
+        event.preventDefault();
+        const digitIndex = countDigitsBeforeCaret(masked, selectionStart);
+        const nextDigits = removeDigitAtIndex(rawPhoneDigits, digitIndex - 1);
+        const nextMasked = formatNationalPhoneByCountryIso2(nextDigits, editCountryIso2);
+        setRawPhoneDigits(nextDigits);
+        nextPhoneCaretRef.current = caretFromDigitIndex(nextMasked, Math.max(0, digitIndex - 1));
+      }
+    }
+
+    if (key === "Delete" && selectionStart < masked.length) {
+      const charAtCaret = masked[selectionStart];
+      if (charAtCaret && !/\d/.test(charAtCaret)) {
+        event.preventDefault();
+        const digitIndex = countDigitsBeforeCaret(masked, selectionStart);
+        const nextDigits = removeDigitAtIndex(rawPhoneDigits, digitIndex);
+        const nextMasked = formatNationalPhoneByCountryIso2(nextDigits, editCountryIso2);
+        setRawPhoneDigits(nextDigits);
+        nextPhoneCaretRef.current = caretFromDigitIndex(nextMasked, digitIndex);
+      }
+    }
+  }
 
   async function loadLeadDetail() {
     if (!id) return;
@@ -69,11 +162,13 @@ export function LeadDetailPage() {
       setEditData({
         student_name: leadResponse.studentName,
         email: leadResponse.email,
-        phone_country: leadResponse.phoneCountry,
-        phone_national: leadResponse.phoneRaw,
         school: leadResponse.school,
         city: leadResponse.city
       });
+      setEditCountryIso2(
+        COUNTRIES.some((country) => country.iso2 === leadResponse.phoneCountry) ? leadResponse.phoneCountry : "BR"
+      );
+      setRawPhoneDigits(nationalDigitsFromE164(leadResponse.phoneE164, leadResponse.phoneCountry));
       setStatusHistory(historyResponse.status_history);
       setContactEvents(historyResponse.contact_events);
     } catch (err) {
@@ -91,6 +186,21 @@ export function LeadDetailPage() {
     void loadLeadDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!editCountryOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (editCountryPickerRef.current?.contains(target)) return;
+      setEditCountryOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [editCountryOpen]);
 
   async function handleStatusChange(newStatus: LeadStatus) {
     if (!id || !lead) return;
@@ -128,7 +238,11 @@ export function LeadDetailPage() {
     setSaving(true);
     setSaveSuccess(null);
     try {
-      await api.updateLead(id, editData);
+      await api.updateLead(id, {
+        ...editData,
+        phone_country: editCountryIso2,
+        phone_national: rawPhoneDigits
+      });
       await loadLeadDetail();
       setSaveSuccess("Dados alterados com sucesso.");
     } catch (err) {
@@ -239,28 +353,60 @@ export function LeadDetailPage() {
             onChange={(e) => setEditData((prev) => ({ ...prev, email: e.target.value }))}
           />
         </label>
-        <div className="form-grid-two">
-          <label>
-            País (ISO2)
+        <div className="form-row">
+          <span className="field-label">Telefone</span>
+          <div className="phone-inline-group">
+            <div
+              className={`country-picker phone-inline-country${editCountryOpen ? " is-open" : ""}`}
+              ref={editCountryPickerRef}
+            >
+              <button
+                type="button"
+                className="country-picker-summary"
+                style={{ backgroundImage: `url(${editCountryFlagUrl})` }}
+                aria-label="Pais"
+                aria-expanded={editCountryOpen}
+                onClick={() => setEditCountryOpen((current) => !current)}
+              />
+              {editCountryOpen ? (
+                <div className="country-picker-menu">
+                  {COUNTRIES.map((country) => (
+                    <button
+                      key={country.iso2}
+                      type="button"
+                      className="country-picker-item"
+                      onClick={() => {
+                        setEditCountryIso2(country.iso2);
+                        setEditCountryOpen(false);
+                      }}
+                    >
+                      <span>{country.flag}</span>
+                      <span>{country.name}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <input
-              value={editData.phone_country}
-              maxLength={2}
-              onChange={(e) =>
-                setEditData((prev) => ({
-                  ...prev,
-                  phone_country: e.target.value.toUpperCase()
-                }))
-              }
+              className="phone-inline-ddi"
+              value={editCountryDdi}
+              readOnly
+              aria-label="Codigo do pais"
             />
-          </label>
-          <label>
-            Telefone nacional
             <input
-              value={editData.phone_national}
-              onChange={(e) => setEditData((prev) => ({ ...prev, phone_national: e.target.value }))}
+              className="phone-inline-number"
+              placeholder={editPhonePlaceholder}
+              ref={phoneInputRef}
+              value={editPhoneMaskedValue}
+              onKeyDown={handlePhoneKeyDown}
+              onChange={(e) => handlePhoneInputChange(e.target.value, e.target.selectionStart)}
+              aria-label="Telefone nacional"
             />
-          </label>
+          </div>
         </div>
+        <p className="helper-text">
+          {editPhoneFullDisplay || formatLeadPhoneForDisplay(lead.phoneE164, lead.phoneCountry)}
+        </p>
         <label>
           Escola
           <input

@@ -79,7 +79,7 @@ a {
 
 .form-row {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .search-row {
@@ -98,9 +98,189 @@ a {
   gap: 8px;
 }
 
+.form-grid-three {
+  display: grid;
+  gap: 8px;
+}
+
+.phone-inline-group {
+  display: grid;
+  grid-template-columns: 68px 64px 1fr;
+  align-items: stretch;
+  border-radius: 10px;
+  overflow: visible;
+  background: transparent;
+}
+
+.phone-inline-country {
+  position: relative;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  min-width: 0;
+  overflow: visible;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.country-picker {
+  border: solid 1px #cbd5e1;
+  position: relative;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.country-picker-summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 0;
+  position: relative;
+  isolation: isolate;
+  padding: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 0;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.country-picker-summary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.country-picker-summary::after {
+  content: "▾";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  color: #0f172a;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+  z-index: 1;
+}
+
+.country-picker-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 220px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  background: #ffffff;
+  border: 0;
+  border-radius: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.country-picker.is-open .country-picker-menu {
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+.country-picker-menu {
+  scrollbar-gutter: stable;
+}
+
+.country-picker-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.country-picker-menu::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 2px;
+}
+
+.country-picker-menu::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+.country-picker-menu::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.country-picker-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0;
+  background: #ffffff;
+  color: #0f172a;
+  min-height: 38px;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.country-picker-item:last-child {
+  border-bottom: 0;
+}
+
+.country-picker-item:hover {
+  background: #f8fafc;
+}
+
+.phone-inline-ddi {
+  border-radius: 0;
+  border-right: 0;
+  text-align: center;
+  background: #d2d2d0;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.phone-inline-number {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background: transparent;
+}
+
+.phone-inline-group .country-picker-summary:focus,
+.phone-inline-group .country-picker-summary:focus-visible,
+.phone-inline-group .phone-inline-ddi:focus,
+.phone-inline-group .phone-inline-ddi:focus-visible,
+.phone-inline-group .phone-inline-number:focus,
+.phone-inline-group .phone-inline-number:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 label {
   display: grid;
   gap: 4px;
+  font-size: 14px;
+  color: #334155;
+}
+
+.field-label {
   font-size: 14px;
   color: #334155;
 }
@@ -120,6 +300,7 @@ button {
   cursor: pointer;
   font-weight: 600;
 }
+
 
 .button-primary {
   background: #0369a1;
@@ -706,6 +887,16 @@ button:disabled {
 
   .form-grid-two {
     grid-template-columns: 120px 1fr;
+  }
+
+  .form-grid-three {
+    grid-template-columns: minmax(180px, 1fr) 100px minmax(180px, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .phone-inline-group {
+    grid-template-columns: 62px 58px 1fr;
   }
 }
 
